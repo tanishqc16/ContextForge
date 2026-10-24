@@ -20,8 +20,13 @@ time (e.g. "the staging key is deprecated", "deploy script is now
 - predicate: a short open-vocabulary label for what aspect is being claimed
   (e.g. "status", "deploy_command", "owner")
 - value: the claimed value, as a short plain string (e.g. "deprecated")
-- context: an optional short phrase naming any qualifying condition
-  mentioned (e.g. "internal tools only"), or omit if there is none
+- context: ONLY set this if the claim is scoped to a specific condition
+  that would make it false in other situations (e.g. "internal tools only"
+  for a claim that doesn't hold for external use). This must change what
+  the claim means, not just restate incidental detail from the sentence —
+  phrases like "right now", "today", or "by someone" are NOT context, they
+  describe when/who, not a different scope the claim applies under. When in
+  doubt, omit context entirely; most claims have none.
 - confidence: how clearly the message states this, from 0 to 1
 
 Questions, greetings, and opinions are not claims. If the message makes no

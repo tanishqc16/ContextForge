@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 # bound: treated as the same entity automatically. Below the lower bound:
 # treated as clearly different. In between: genuinely ambiguous, so the LLM
 # is asked to judge — most mentions never reach that LLM call.
-AUTO_MERGE_THRESHOLD = 0.82
+AUTO_MERGE_THRESHOLD = 0.93
 AMBIGUOUS_LOWER_THRESHOLD = 0.60
 
 TIEBREAK_INSTRUCTIONS = """\

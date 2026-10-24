@@ -70,6 +70,15 @@ class EntityMatchDecision(BaseModel):
     reason: str
 
 
+class PredicateMatchDecision(BaseModel):
+    """Structured output for the predicate-resolution LLM tiebreak — asks
+    whether two attribute labels (e.g. "status" and "booking_status") refer
+    to the same underlying attribute of a specific entity."""
+
+    same_attribute: bool
+    reason: str
+
+
 class ClaimRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

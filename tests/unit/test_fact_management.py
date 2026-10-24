@@ -1,10 +1,11 @@
 from datetime import UTC, datetime
 from typing import Any
 
+import pytest
 from sqlalchemy.orm import Session
 
 from app.conversation.models import Message
-from app.knowledge import fact_management
+from app.knowledge import fact_management, predicate_resolution
 from app.knowledge.models import Claim, Entity, Fact, FactStatus
 
 
@@ -141,3 +142,52 @@ def test_already_promoted_claims_are_not_reprocessed(db_session: Session) -> Non
 
     second_run = fact_management.promote_pending_claims(db_session)
     assert second_run == []
+
+
+def test_differently_named_predicates_for_same_attribute_still_supersede(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression test for a real bug found in manual testing: "Room 1
+    booked by Ron" (predicate=booking_status) followed by "Room 1 is free"
+    (predicate=status) were being stored as two unrelated CURRENT facts
+    instead of the second correctly superseding the first — because the
+    predicate names didn't match exactly. Predicate resolution should fix
+    this by recognizing both describe the same attribute.
+
+    The first-seen wording ("booking_status") becomes the canonical form
+    for this entity — later claims get canonicalized onto it, not the
+    other way around, same as how an entity's first surface text becomes
+    its canonical_name.
+    """
+    entity = _entity(db_session, "Room 1")
+
+    def fake_embed(text: str) -> list[float]:
+        # "status" and "booking_status" score ~0.96 similarity with real
+        # embeddings — high enough to auto-merge without an LLM call.
+        return {"booking_status": [1.0, 0.0], "status": [0.96, 0.28]}[text.lower()]
+
+    monkeypatch.setattr(predicate_resolution, "embed_text", fake_embed)
+
+    msg1 = _message(db_session, "Room 1 is booked by Ron", datetime(2026, 1, 1, tzinfo=UTC))
+    _claim(db_session, msg1, entity, "booking_status", "booked")
+    fact_management.promote_pending_claims(db_session)
+
+    msg2 = _message(db_session, "Room 1 is free now", datetime(2026, 1, 2, tzinfo=UTC))
+    _claim(db_session, msg2, entity, "status", "free")
+    fact_management.promote_pending_claims(db_session)
+
+    all_facts = (
+        db_session.query(Fact)
+        .filter_by(entity_id=entity.id)
+        .order_by(Fact.version)
+        .all()
+    )
+    assert len(all_facts) == 2, "should be one superseded + one current, not two parallel facts"
+
+    old, new = all_facts
+    assert old.status == FactStatus.SUPERSEDED
+    assert old.predicate == "booking_status"
+    assert new.status == FactStatus.CURRENT
+    assert new.predicate == "booking_status"  # canonicalized onto the first-seen wording
+    assert new.value == {"value": "free"}
+    assert new.supersedes_fact_id == old.id

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.conversation.models import Message
 from app.knowledge.models import Claim, Entity, Evidence, Fact, FactStatus
+from app.knowledge.predicate_resolution import resolve_predicate
 
 # A claim only becomes trusted "current knowledge" above this confidence —
 # this is plain code, not an LLM judgment call (per the project's rule that
@@ -50,6 +51,12 @@ def promote_pending_claims(db: Session) -> list[Fact]:
     always moving forward in time. A claim already backing a Fact (via an
     Evidence row) is never re-promoted.
 
+    Each claim's predicate is first canonicalized against predicates already
+    used for this entity (see predicate_resolution.py) — "status" and
+    "booking_status" for the same entity are recognized as one attribute,
+    so a later value correctly supersedes the earlier one instead of
+    sitting alongside it as an unrelated fact.
+
     - A new value for an (entity, predicate, context) not seen before opens
       a new, CURRENT fact.
     - The same value seen again just adds corroborating evidence to the
@@ -77,13 +84,14 @@ def promote_pending_claims(db: Session) -> list[Fact]:
         entity = db.get(Entity, claim.subject_entity_id)
         assert entity is not None
 
+        canonical_predicate = resolve_predicate(db, entity.id, claim.predicate)
         context_key = _context_key(claim.context)
-        current = _current_fact_for(db, entity.id, claim.predicate, context_key)
+        current = _current_fact_for(db, entity.id, canonical_predicate, context_key)
 
         if current is None:
             fact = Fact(
                 entity_id=entity.id,
-                predicate=claim.predicate,
+                predicate=canonical_predicate,
                 value=claim.value,
                 context=claim.context,
                 valid_range=_range_literal(message.sent_at, None),
@@ -104,7 +112,7 @@ def promote_pending_claims(db: Session) -> list[Fact]:
 
             new_fact = Fact(
                 entity_id=entity.id,
-                predicate=claim.predicate,
+                predicate=canonical_predicate,
                 value=claim.value,
                 context=claim.context,
                 valid_range=_range_literal(message.sent_at, None),

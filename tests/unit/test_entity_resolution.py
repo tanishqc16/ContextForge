@@ -98,6 +98,39 @@ def test_ambiguous_similarity_uses_llm_tiebreak(
     assert resolved[0].resolved_entity_id != first.resolved_entity_id
 
 
+def test_near_identical_short_phrases_require_llm_tiebreak_not_auto_merge(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression test for a real bug found in manual testing: "Room 1" and
+    "Room 2" scored 0.91 cosine similarity (nearly identical *meaning*,
+    different specific rooms). That must NOT auto-merge — it has to go
+    through the LLM tiebreak, which can actually notice the room numbers
+    differ, instead of being silently merged by embedding math alone."""
+    msg = _message(db_session, "placeholder")
+    first = _mention(db_session, msg, "Room 1", _vec(1.0, 0.0))
+    first.resolved_entity_id = entity_resolution._create_entity(db_session, first).id
+    db_session.commit()
+
+    # ~0.91 cosine similarity, matching the real Room 1 / Room 2 measurement.
+    _mention(db_session, msg, "Room 2", _vec(0.9148, 0.4039))
+
+    tiebreak_calls = []
+
+    def fake_tiebreak(
+        a_text: str, a_type: str, b_text: str, b_type: str
+    ) -> EntityMatchDecision:
+        tiebreak_calls.append((a_text, b_text))
+        return EntityMatchDecision(same_entity=False, reason="different room numbers")
+
+    monkeypatch.setattr(entity_resolution, "_tiebreak", fake_tiebreak)
+
+    resolved = entity_resolution.resolve_pending_entities(db_session)
+
+    assert len(tiebreak_calls) == 1, "should have been ambiguous, not auto-merged"
+    assert len(resolved) == 1
+    assert resolved[0].resolved_entity_id != first.resolved_entity_id
+
+
 def test_link_claims_to_entities_matches_by_normalized_text(db_session: Session) -> None:
     msg = _message(db_session, "staging key is deprecated")
     mention = _mention(db_session, msg, "staging key", _vec(1.0, 0.0))

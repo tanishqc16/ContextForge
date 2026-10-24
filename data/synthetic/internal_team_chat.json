@@ -18,5 +18,8 @@
   {"conversation_id": "eng-team", "sender": "lee", "sender_role": "junior_engineer", "text": "quick q - is it ./deploy.sh prod or ./deploy.sh --env=prod?", "sent_at": "2026-09-01T11:00:00Z"},
   {"conversation_id": "eng-team", "sender": "mona", "sender_role": "junior_engineer", "text": "anyone know how webhook retry backoff is configured? still can't find docs on it", "sent_at": "2026-09-05T16:00:00Z"},
   {"conversation_id": "eng-team", "sender": "nina", "sender_role": "junior_engineer", "text": "same question here, nobody ever answered this before either", "sent_at": "2026-09-06T10:00:00Z"},
-  {"conversation_id": "eng-team", "sender": "oscar", "sender_role": "junior_engineer", "text": "happy friday everyone", "sent_at": "2026-09-06T17:00:00Z"}
+  {"conversation_id": "eng-team", "sender": "oscar", "sender_role": "junior_engineer", "text": "happy friday everyone", "sent_at": "2026-09-06T17:00:00Z"},
+  {"conversation_id": "test-rooms", "sender": "alice", "text": "The meeting is in Room 1", "sent_at": "2026-01-01T09:00:00Z"},
+  {"conversation_id": "test-rooms", "sender": "bob", "text": "Room 1 is booked by Ron right now", "sent_at": "2026-01-01T09:05:00Z"},
+  {"conversation_id": "test-rooms", "sender": "carol", "text": "Ron moved to Room 2, so Room 1 is free now", "sent_at": "2026-01-01T09:30:00Z"}
 ]
