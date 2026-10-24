@@ -11,7 +11,7 @@ app.include_router(understanding_router)
 app.include_router(knowledge_router)
 app.include_router(retrieval_router)
 
-// status check
+# status check
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
